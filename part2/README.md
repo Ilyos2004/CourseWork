@@ -9,7 +9,7 @@
 ## Оглавление
 
 - [Требования задания](#требования-задания)  
-- [ER-модель)](images/ER-модель.png)  
+- [ER-модель)](#ER-модель)  
 - [Датологическая модель](images/DDl-модель.png)  
 - [Триггеры (PL/pgSQL)](#триггеры-plpgsql)  
 - [PL/pgSQL функции / процедуры](#plpgsql-функции--процедуры)  
@@ -33,7 +33,10 @@
 
 ---
 
-## Схема БД (даталогическая модель)
+## ER-модель
+<table>
+    <td><img src="images/ER - модель.png" alt="ER" width="450"/></td>
+</table>
 
 Основные таблицы: `roles`, `users`, `tutor_profiles`, `student_profiles`, `subjects`, `tutor_subjects`, `format`, `location`, `time_slot`, `booking`, `review`.
 
