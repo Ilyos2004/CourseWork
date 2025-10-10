@@ -11,7 +11,7 @@
 - [Требования задания](#требования-задания)  
 - [ER-модель](#ER-модель)  
 - [Датологическая модель](#DDL-модель)  
-- [Реализация даталогической модели в реляционной СУБД PostgreSQL](#Реализация даталогической модели в реляционной СУБД PostgreSQL)  
+- [Реализация даталогической модели в реляционной СУБД PostgreSQL](#Реализация-даталогической-модели-в-реляционной-СУБД-PostgreSQL).
 - [PL/pgSQL функции / процедуры](#plpgsql-функции--процедуры)  
 - [Seed (тестовые данные)](#seed-тестовые-данные)  
 - [Индексы и обоснование](#индексы-и-обоснование)  
@@ -41,11 +41,13 @@
 
 ## Реализация даталогической модели в реляционной СУБД PostgreSQL
 
+-- 1. Role
 CREATE TABLE roles (
-  role_id   SERIAL PRIMARY KEY,
+  role_id SERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE
 );
 
+-- 2. User
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   full_name TEXT NOT NULL,
@@ -55,6 +57,17 @@ CREATE TABLE users (
   role_id INT NOT NULL REFERENCES roles(role_id)
 );
 
+-- 3. Tutor_Profiles
+CREATE TABLE tutor_profiles (
+  id SERIAL PRIMARY KEY,
+  experience_years INT DEFAULT 0 CHECK (experience_years >= 0),
+  info TEXT,
+  rating_count INT DEFAULT 0 CHECK (rating_count >= 0),
+  languages TEXT,
+  user_id INT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
+);
+
+-- 4. Student_Profiles
 CREATE TABLE student_profiles (
   id SERIAL PRIMARY KEY,
   preferred_language VARCHAR(100),
@@ -63,6 +76,64 @@ CREATE TABLE student_profiles (
   user_id INT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
 );
 
+-- 5. Subjects
+CREATE TABLE subjects (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(150) NOT NULL UNIQUE
+);
+
+-- 6. Tutor_Subjects
+CREATE TABLE tutor_subjects (
+  id SERIAL PRIMARY KEY,
+  subject_id INT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+  tutor_id INT NOT NULL REFERENCES tutor_profiles(id) ON DELETE CASCADE,
+  info TEXT,
+  count_students INT DEFAULT 0 CHECK (count_students >= 0),
+  languages VARCHAR(150)
+);
+
+-- 7. Format
+CREATE TABLE format (
+  id SERIAL PRIMARY KEY,
+  type TEXT NOT NULL UNIQUE
+);
+
+-- 8. Location
+CREATE TABLE location (
+  id SERIAL PRIMARY KEY,
+  format_id INT REFERENCES format(id),
+  info TEXT
+);
+
+-- 9. Time_Slot
+CREATE TABLE time_slot (
+  id SERIAL PRIMARY KEY,
+  tutor_id INT NOT NULL REFERENCES tutor_profiles(id) ON DELETE CASCADE,
+  subject_id INT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+  location_id INT REFERENCES location(id),
+  start_dt TEXT NOT NULL,
+  end_dt TEXT NOT NULL,
+  capacity INT NOT NULL DEFAULT 1 CHECK (capacity > 0),
+  status TEXT
+);
+
+-- 10. Booking
+CREATE TABLE booking (
+  id SERIAL PRIMARY KEY,
+  slot_id INT NOT NULL REFERENCES time_slot(id) ON DELETE CASCADE,
+  student_id INT NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+  booked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  status TEXT
+);
+
+-- 11. Review
+CREATE TABLE review (
+  id SERIAL PRIMARY KEY,
+  student_id INT NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+  tutorsubject_id INT REFERENCES tutor_subjects(id) ON DELETE SET NULL,
+  rating INT CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT
+);
 
 
 
