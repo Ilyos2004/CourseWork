@@ -12,7 +12,7 @@
 - [ER-модель](#ER-модель)  
 - [Датологическая модель](#DDL-модель)  
 - [Реализация даталогической модели в реляционной СУБД PostgreSQL](#Реализация-даталогической-модели-в-реляционной-СУБД-PostgreSQL).
-- [PL/pgSQL функции / процедуры](#plpgsql-функции--процедуры)  
+- [Триггеры](#Триггеры)  
 - [Seed (тестовые данные)](#seed-тестовые-данные)  
 - [Индексы и обоснование](#индексы-и-обоснование)  
 - [Инструкции по развёртыванию](#инструкции-по-развёртыванию)  
@@ -41,6 +41,8 @@
 
 ## Реализация даталогической модели в реляционной СУБД PostgreSQL
 
+
+```sql
 -- 1. Role
 CREATE TABLE roles (
   role_id SERIAL PRIMARY KEY,
@@ -134,6 +136,96 @@ CREATE TABLE review (
   rating INT CHECK (rating BETWEEN 1 AND 5),
   comment TEXT
 );
+```
+## Триггеры
+
+### 1️⃣ Проверка — нельзя бронировать слот, который уже начался
+
+```sql
+CREATE OR REPLACE FUNCTION check_booking_before_start()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  s timestamptz;
+BEGIN
+  -- явно приводим TEXT -> timestamptz (работает, если строка в ISO)
+  SELECT start_dt::timestamptz INTO s
+  FROM time_slot
+  WHERE id = NEW.slot_id
+  LIMIT 1;
+
+  IF s IS NULL THEN
+    RAISE EXCEPTION 'Slot % not found (booking before start check)', NEW.slot_id;
+  END IF;
+
+  IF s <= now() THEN
+    RAISE EXCEPTION 'Cannot book slot %: it already started at %', NEW.slot_id, s;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+```
+### 2️⃣ Проверка вместимости (capacity) при вставке брони
+```sql
+CREATE OR REPLACE FUNCTION fn_check_capacity()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  cap INT;
+  cnt INT;
+BEGIN
+  -- проверяем только случаи, когда новая запись считается "booked"
+  IF NOT (NEW.status IS NULL OR lower(NEW.status) = 'booked') THEN
+    RETURN NEW;
+  END IF;
+
+  -- если это UPDATE и статус уже был 'booked' — нет роста занятости -> пропускаем
+  IF TG_OP = 'UPDATE' AND (OLD.status IS NOT NULL AND lower(OLD.status) = 'booked') THEN
+    RETURN NEW;
+  END IF;
+
+  -- блокируем эту строку time_slot для корректного подсчёта при конкурентных попытках
+  SELECT capacity INTO cap FROM time_slot WHERE id = NEW.slot_id FOR UPDATE;
+  IF cap IS NULL THEN
+    RAISE EXCEPTION 'Slot % not found (capacity check)', NEW.slot_id;
+  END IF;
+
+  SELECT count(*) INTO cnt FROM booking
+    WHERE slot_id = NEW.slot_id AND (status IS NULL OR lower(status) = 'booked');
+
+  IF cnt >= cap THEN
+    RAISE EXCEPTION 'Cannot book slot %: capacity % already reached', NEW.slot_id, cap;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+```
+
+3️⃣ Автоматическая отмена бронирования при отмене слота
+```sql
+-- Функция: авто-отмена бронирований при переводе слота в status = 'cancelled'
+CREATE OR REPLACE FUNCTION fn_auto_cancel_bookings_on_slot_cancel()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status
+     AND NEW.status IS NOT NULL AND lower(NEW.status) = 'cancelled' THEN
+
+    UPDATE booking
+    SET status = 'cancelled', updated_at = now()
+    WHERE slot_id = NEW.id
+      AND (status IS NULL OR lower(status) <> 'cancelled');
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+```
 
 
 
