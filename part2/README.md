@@ -378,7 +378,7 @@ BEGIN
     now()                     -- время создания
   )
   RETURNING id INTO v_new_id;
-  -- ↑ INSERT ... RETURNING id INTO v_new_id — сохраняет id только что созданной записи,
+  -- сохраняет id только что созданной записи,
 
   -- Находим id профиля репетитора через слот, связанный с бронированием
   SELECT ts.tutor_id INTO v_tutor_profile_id
