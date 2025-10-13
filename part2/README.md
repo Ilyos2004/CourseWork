@@ -117,12 +117,14 @@ CREATE TABLE time_slot (
 );
 
 -- 10. Booking
+CREATE TYPE booking_status AS ENUM ('booked', 'cancelled', 'completed');
+
 CREATE TABLE booking (
   id SERIAL PRIMARY KEY,
   slot_id INT NOT NULL REFERENCES time_slot(id) ON DELETE CASCADE,
   student_id INT NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
   booked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  status TEXT
+  status booking_status NOT NULL DEFAULT 'booked'
 );
 
 -- 11. Review
@@ -347,73 +349,88 @@ RETURNS INT
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  v_booking RECORD;
-  v_tutor_profile_id INT;
-  v_new_id INT;
-  v_cnt INT;
+  v_booking RECORD;              
+  v_tutor_profile_id INT;       
+  v_new_id INT;                  
+  v_cnt INT;                     
+  v_avg NUMERIC;                 
 BEGIN
-  -- Проверяем существование бронирования
+  -- Проверяем существование брони
   SELECT * INTO v_booking FROM booking WHERE id = p_booking_id LIMIT 1;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Booking % not found', p_booking_id;
   END IF;
 
-  -- Добавляем новый отзыв
-  INSERT INTO review (student_id, tutorsubject_id, booking_id, rating, comment)
+  -- Валидация рейтинга 
+  IF p_rating IS NULL OR p_rating < 1 OR p_rating > 5 THEN
+    RAISE EXCEPTION 'Rating must be between 1 and 5 (got: %)', p_rating;
+  END IF;
+  --  Проверяем, чтобы рейтинг был в допустимом диапазоне 1..5
+
+  -- Вставляем новый отзыв 
+  INSERT INTO review (student_id, tutorsubject_id, booking_id, rating, comment, created_at)
   VALUES (
-    v_booking.student_id,
-    NULL,
-    p_booking_id,
-    p_rating,
-    p_comment
+    v_booking.student_id,     -- берем id студента из найденной брони
+    NULL,                     -- tutorsubject_id оставляем NULL (можно заполнить при наличии данных)
+    p_booking_id,             -- связываем отзыв с бронированием
+    p_rating,                 -- оценка
+    p_comment,                -- комментарий
+    now()                     -- время создания
   )
   RETURNING id INTO v_new_id;
+  -- ↑ INSERT ... RETURNING id INTO v_new_id — сохраняет id только что созданной записи,
 
-  -- Определяем ID репетитора через связанный слот
+  -- Находим id профиля репетитора через слот, связанный с бронированием
   SELECT ts.tutor_id INTO v_tutor_profile_id
   FROM booking b
   JOIN time_slot ts ON b.slot_id = ts.id
   WHERE b.id = p_booking_id
   LIMIT 1;
 
-  -- Пересчитываем количество отзывов у репетитора
+
+  -- Если нашли репетитора — пересчитываем count и average всех его рейтингов
   IF v_tutor_profile_id IS NOT NULL THEN
-    SELECT count(r.id) INTO v_cnt
+    SELECT COUNT(r.id), AVG(r.rating)::numeric(3,2)
+      INTO v_cnt, v_avg
     FROM review r
     JOIN booking b2 ON r.booking_id = b2.id
     JOIN time_slot ts2 ON b2.slot_id = ts2.id
-    WHERE ts2.tutor_id = v_tutor_profile_id;
+    WHERE ts2.tutor_id = v_tutor_profile_id
+      AND r.rating IS NOT NULL;
 
+    -- Обновляем профиль репетитора: количество отзывов и средний рейтинг 
     UPDATE tutor_profiles
-    SET rating_count = COALESCE(v_cnt, 0)
+    SET rating_count = v_cnt,
+        rating_avg = ROUND(v_avg:),
+        updated_at = now()
     WHERE id = v_tutor_profile_id;
   END IF;
 
   RETURN v_new_id;
 END;
 $$;
+
 ```
 
 ## ⚡ Индексы
 ```sql
--- 1️⃣ Частичный индекс: быстрый подсчёт занятости слота (ключевой для прецедента ID3)
-CREATE INDEX IF NOT EXISTS idx_booking_slot_booked
-  ON booking (slot_id)
-  WHERE (status IS NULL OR lower(status) = 'booked');
+-- 1️⃣ Индекс для запросов, связанных с бронированиями по слотам. 
+CREATE INDEX IF NOT EXISTS idx_booking_slot_status
+  ON booking (slot_id, status);
 
--- 2️⃣ Индекс для поиска бронирований студента (личный кабинет)
+-- 2️⃣ Индекс для поиска бронирований студента 
 CREATE INDEX IF NOT EXISTS idx_booking_student
   ON booking (student_id);
 
--- 3️⃣ Поиск ближайшего слота репетитора (ORDER BY start_dt)
+-- 3️⃣ Поиск ближайшего слота репетитора 
 CREATE INDEX IF NOT EXISTS idx_time_slot_tutor_start_text
   ON time_slot (tutor_id, start_dt);
 
--- 4️⃣ Поиск слотов по предмету и дате (фильтрация в UI)
+-- 4️⃣ Поиск слотов по предмету и дате 
 CREATE INDEX IF NOT EXISTS idx_time_slot_subject_start_text
   ON time_slot (subject_id, start_dt);
 
--- 5️⃣ Поиск активных/опубликованных слотов (ускоряет выдачу списка)
+-- 5️⃣ Поиск активных/опубликованных слотов 
 CREATE INDEX IF NOT EXISTS idx_time_slot_status_start_text
   ON time_slot (status, start_dt);
 ```
