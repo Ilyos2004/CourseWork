@@ -31,7 +31,7 @@
 ---
 
 ## ER-модель
-<img alt=" " src="">
+<img alt=" " src="https://github.com/Ilyos2004/CourseWork/blob/dev2/part2/ER-%D0%BC%D0%BE%D0%B4%D0%B5%D0%BB%D1%8C.png">
 
 ## DDL-модель
 <img alt=" " src="https://github.com/Ilyos2004/CourseWork/blob/dev2/part2/DDL%20-%20%D0%BC%D0%BE%D0%B4%D0%B5%D0%BB%D1%8C.png">
