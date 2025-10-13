@@ -124,7 +124,7 @@ CREATE TABLE booking (
   slot_id INT NOT NULL REFERENCES time_slot(id) ON DELETE CASCADE,
   student_id INT NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
   booked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  status booking_status NOT NULL DEFAULT 'booked'
+  status booking_status NOT NULL 
 );
 
 -- 11. Review
