@@ -192,13 +192,15 @@ BEGIN
     RAISE EXCEPTION 'Slot % not found (capacity check)', NEW.slot_id;
   END IF;
 
+  -- Считаем текущее количество занятых мест
   SELECT count(*) INTO cnt FROM booking
     WHERE slot_id = NEW.slot_id AND (status IS NULL OR lower(status) = 'booked');
 
+  --Сравниваем с лимитом
   IF cnt >= cap THEN
     RAISE EXCEPTION 'Cannot book slot %: capacity % already reached', NEW.slot_id, cap;
   END IF;
-
+  
   RETURN NEW;
 END;
 $$;
