@@ -311,9 +311,10 @@ VALUES
 ```
 ## PL/pgSQL-функции и процедуры для выполнения критически важных запросов.
 
-#### 🔍 Получить доступные слоты в диапазоне (возвращает start_dt/end_dt как TEXT)
+#### 🔍 Получить доступные слоты (возвращает start_dt/end_dt как TEXT)
 ```sql
 CREATE OR REPLACE FUNCTION fn_get_available_slots(p_from timestamptz, p_to timestamptz)
+-- Возвращаем таблицу с колонками:
 RETURNS TABLE (
   slot_id INT,
   tutor_id INT,
@@ -348,6 +349,7 @@ CREATE OR REPLACE FUNCTION fn_add_review(p_booking_id INT, p_rating INT, p_comme
 RETURNS INT
 LANGUAGE plpgsql
 AS $$
+-- Создаем перемены для хранения данных
 DECLARE
   v_booking RECORD;              
   v_tutor_profile_id INT;       
@@ -371,7 +373,7 @@ BEGIN
   INSERT INTO review (student_id, tutorsubject_id, booking_id, rating, comment, created_at)
   VALUES (
     v_booking.student_id,     -- берем id студента из найденной брони
-    NULL,                     -- tutorsubject_id оставляем NULL (можно заполнить при наличии данных)
+    tutorsubject_id,          -- берем id предмета 
     p_booking_id,             -- связываем отзыв с бронированием
     p_rating,                 -- оценка
     p_comment,                -- комментарий
@@ -388,7 +390,7 @@ BEGIN
   LIMIT 1;
 
 
-  -- Если нашли репетитора — пересчитываем count и average всех его рейтингов
+  -- Пересчёт количества и среднего рейтинга
   IF v_tutor_profile_id IS NOT NULL THEN
     SELECT COUNT(r.id), AVG(r.rating)::numeric(3,2)
       INTO v_cnt, v_avg
