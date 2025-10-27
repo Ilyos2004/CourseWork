@@ -148,7 +148,7 @@ AS $$
 DECLARE
   s timestamptz;
 BEGIN
-  -- явно приводим TEXT -> timestamptz (работает, если строка в ISO)
+  -- приводим TEXT -> timestamptz 
   SELECT start_dt::timestamptz INTO s
   FROM time_slot
   WHERE id = NEW.slot_id
