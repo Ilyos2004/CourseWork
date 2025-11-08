@@ -457,12 +457,14 @@ CREATE INDEX IF NOT EXISTS idx_time_slot_status_start
 #### 1) До создания индекса:
 ```
  EXPLAIN ANALYZE
- SELECT id, start_dt
-FROM time_slot, params
-WHERE tutor_id = (SELECT tp.id FROM tutor_profiles tp
-                  JOIN users u ON u.id = tp.user_id
-                  WHERE u.email = 'alice.tutor@example.com')
-  AND start_dt >= params.now_iso
+SELECT id, start_dt
+FROM time_slot
+WHERE tutor_id = (
+  SELECT tp.id FROM tutor_profiles tp
+  JOIN users u ON u.id = tp.user_id
+  WHERE u.email = 'alice.tutor@example.com'
+)
+  AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
 ORDER BY start_dt;
 ```
  Planning Time: 0.884 ms
@@ -484,6 +486,7 @@ WHERE tutor_id = (
 ORDER BY start_dt;
 ```
  Planning Time: 0.538 ms
+ 
  Execution Time: 0.128 ms
 
 #### 2) До создания индекса:
