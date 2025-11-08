@@ -418,24 +418,183 @@ $$;
 
 ## ⚡ Индексы
 ```sql
--- 1️⃣ Индекс для запросов, связанных с бронированиями по слотам. 
-CREATE INDEX IF NOT EXISTS idx_booking_slot_status
-  ON booking (slot_id, status);
+-- 1️⃣ Индекс создан для ускорения выборок ближайших слотов конкретного репетитора по колонкам tutor_id и start_dt.
+CREATE INDEX IF NOT EXISTS idx_time_slot_tutor_start ON time_slot(tutor_id, start_dt);
+Тип: B-tree
+-- Потому что, фильтр по равенству (tutor_id) + диапазон/сортировка по времени (start_dt) —
+ классический кейс для B-tree, позволяет идти по индексу без лишней сортировки.
 
--- 2️⃣ Индекс для поиска бронирований студента 
+-- 2️⃣ Индекс для быстрого поиска и просмотра истории бронирований конкретного студента.
 CREATE INDEX IF NOT EXISTS idx_booking_student
   ON booking (student_id);
+Тип: B-tree
+-- Потому что, частые выборки по равенству (student_id = …); B-tree даёт быстрый Index Scan/Only Scan.
 
--- 3️⃣ Поиск ближайшего слота репетитора 
-CREATE INDEX IF NOT EXISTS idx_time_slot_tutor_start_text
-  ON time_slot (tutor_id, start_dt);
+-- 3️⃣ Индекс ускоряет проверки и выборку отзывов, связанных с конкретной бронью. 
+CREATE INDEX IF NOT EXISTS idx_review_booking ON review(booking_id);
+Тип: B-tree
+-- Потому что, точечный поиск по равенству (booking_id) — оптимально для B-tree.
 
--- 4️⃣ Поиск слотов по предмету и дате 
-CREATE INDEX IF NOT EXISTS idx_time_slot_subject_start_text
+-- 4️⃣ Индекс для ускорения поиска слотов по предмету в заданном интервале дат
+и выдачи в порядке времени начала.
+CREATE INDEX IF NOT EXISTS idx_time_slot_subject_start
   ON time_slot (subject_id, start_dt);
+Тип: B-tree
+-- Потому что, селективный фильтр по subject_id + диапазон/ORDER BY по start_dt —
+B-tree хорошо поддерживает и сравнение по времени, и чтение в нужном порядке.
 
--- 5️⃣ Поиск активных/опубликованных слотов 
-CREATE INDEX IF NOT EXISTS idx_time_slot_status_start_text
+-- 5️⃣ Индекс для ускорения выборок слотов по статусу (published/cancelled/draft)
+--     и дате начала.
+CREATE INDEX IF NOT EXISTS idx_time_slot_status_start
   ON time_slot (status, start_dt);
+  Тип: B-tree
+-- Потому что, фильтр по равенству статуса и выборка по времени; составной B-tree
+ускоряет любые статусы (published/cancelled/draft) и снижает время сортировки.
 ```
+
+## Примеры использование индексов 
+
+#### 1) До создания индекса:
+```
+ EXPLAIN ANALYZE
+ SELECT id, start_dt
+FROM time_slot, params
+WHERE tutor_id = (SELECT tp.id FROM tutor_profiles tp
+                  JOIN users u ON u.id = tp.user_id
+                  WHERE u.email = 'alice.tutor@example.com')
+  AND start_dt >= params.now_iso
+ORDER BY start_dt;
+```
+ Planning Time: 0.884 ms
+ 
+ Execution Time: 0.152 ms
+
+ #### После создания индекса:
+ ```
+ EXPLAIN ANALYZE
+SELECT id, start_dt
+FROM time_slot
+WHERE tutor_id = (
+        SELECT tp.id
+        FROM tutor_profiles tp
+        JOIN users u ON u.id = tp.user_id
+        WHERE u.email = 'alice.tutor@example.com'
+      )
+  AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+ORDER BY start_dt;
+```
+ Planning Time: 0.538 ms
+ Execution Time: 0.128 ms
+
+#### 2) До создания индекса:
+```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, slot_id, status, booked_at
+FROM booking
+WHERE student_id = (
+  SELECT sp.id
+  FROM student_profiles sp
+  JOIN users u ON u.id = sp.user_id
+  WHERE u.email = 'dave.student@example.com'  -- подставь нужный e-mail студента
+)
+ORDER BY booked_at DESC;
+```
+ Planning Time: 0.514 ms
+
+ Execution Time: 0.118 ms
+
+ #### После создания индекса:
+ ```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, slot_id, status, booked_at
+FROM booking
+WHERE student_id = (
+  SELECT sp.id
+  FROM student_profiles sp
+  JOIN users u ON u.id = sp.user_id
+  WHERE u.email = 'dave.student@example.com'
+)
+ORDER BY booked_at DESC;
+```
+ Planning Time: 0.538 ms
+
+ Execution Time: 0.109 ms
+
+ #### 3) До создания индекса:
+```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, rating, comment
+FROM review
+WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
+```
+ Planning Time: 0.349 ms
+
+ Execution Time: 0.064 ms
+
+ #### После создания индекса:
+ ```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, rating, comment
+FROM review
+WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
+```
+ Planning Time: 0.328 ms
+
+ Execution Time: 0.047 ms
+
+ #### 4) До создания индекса:
+```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, tutor_id, start_dt
+FROM time_slot
+WHERE subject_id = (SELECT id FROM subjects WHERE name = 'Math')
+  AND start_dt >= '2025-11-01T00:00:00+00'
+  AND start_dt <  '2025-12-01T00:00:00+00'
+ORDER BY start_dt;
+```
+ Planning Time: 0.458 ms
+
+ Execution Time: 0.104 ms
+
+ #### После создания индекса:
+ ```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, tutor_id, start_dt
+FROM time_slot
+WHERE subject_id = (SELECT id FROM subjects WHERE name = 'Math')
+  AND start_dt >= '2025-11-01T00:00:00+00'
+  AND start_dt <  '2025-12-01T00:00:00+00'
+ORDER BY start_dt;
+
+```
+ Planning Time: 0.382 ms
+
+ Execution Time: 0.092 ms
+
+ #### 5) До создания индекса:
+```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, tutor_id, subject_id, start_dt
+FROM time_slot
+WHERE status = 'published'
+  AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+ORDER BY start_dt;
+```
+ Planning Time: 0.381 ms
+
+ Execution Time: 0.062 ms
+
+ #### После создания индекса:
+ ```
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, tutor_id, subject_id, start_dt
+FROM time_slot
+WHERE status = 'published'
+  AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+ORDER BY start_dt;
+
+```
+ Planning Time: 0.378 ms
+
+ Execution Time: 0.051 ms
 
