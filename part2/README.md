@@ -421,8 +421,8 @@ $$;
 -- 1️⃣ Индекс создан для ускорения выборок ближайших слотов конкретного репетитора по колонкам tutor_id и start_dt.
 CREATE INDEX IF NOT EXISTS idx_time_slot_tutor_start ON time_slot(tutor_id, start_dt);
 Тип: B-tree
--- Потому что, фильтр по равенству (tutor_id) + диапазон/сортировка по времени (start_dt) —
- классический кейс для B-tree, позволяет идти по индексу без лишней сортировки.
+-- Потому что, фильтр по равенству (tutor_id) + диапазон/сортировка по времени (start_dt) —  классический кейс для B-tree, позволяет идти по индексу без лишней сортировки.
+
 
 -- 2️⃣ Индекс для быстрого поиска и просмотра истории бронирований конкретного студента.
 CREATE INDEX IF NOT EXISTS idx_booking_student
@@ -440,16 +440,16 @@ CREATE INDEX IF NOT EXISTS idx_review_booking ON review(booking_id);
 CREATE INDEX IF NOT EXISTS idx_time_slot_subject_start
   ON time_slot (subject_id, start_dt);
 Тип: B-tree
--- Потому что, селективный фильтр по subject_id + диапазон/ORDER BY по start_dt —
-B-tree хорошо поддерживает и сравнение по времени, и чтение в нужном порядке.
+-- Потому что, селективный фильтр по subject_id + диапазон/ORDER BY по start_dt - B-tree хорошо поддерживает и сравнение по времени, и чтение в нужном порядке.
+
 
 -- 5️⃣ Индекс для ускорения выборок слотов по статусу (published/cancelled/draft)
 --     и дате начала.
 CREATE INDEX IF NOT EXISTS idx_time_slot_status_start
   ON time_slot (status, start_dt);
   Тип: B-tree
--- Потому что, фильтр по равенству статуса и выборка по времени; составной B-tree
-ускоряет любые статусы (published/cancelled/draft) и снижает время сортировки.
+-- Потому что, фильтр по равенству статуса и выборка по времени; составной B-tree ускоряет любые статусы (published/cancelled/draft) и снижает время сортировки.
+
 ```
 
 ## Примеры использование индексов 
