@@ -466,11 +466,10 @@ WHERE tutor_id = (
 )
   AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
 ORDER BY start_dt;
-```
- Planning Time: 0.884 ms
- 
- Execution Time: 0.152 ms
 
+ Planning Time: 0.884 ms
+ Execution Time: 0.152 ms
+```
  #### После создания индекса:
  ```
  EXPLAIN ANALYZE
@@ -484,10 +483,10 @@ WHERE tutor_id = (
       )
   AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
 ORDER BY start_dt;
-```
+
  Planning Time: 0.538 ms
- 
  Execution Time: 0.128 ms
+```
 
 #### 2) До создания индекса:
 ```
@@ -501,10 +500,10 @@ WHERE student_id = (
   WHERE u.email = 'dave.student@example.com'  -- подставь нужный e-mail студента
 )
 ORDER BY booked_at DESC;
-```
- Planning Time: 0.514 ms
 
+ Planning Time: 0.514 ms
  Execution Time: 0.118 ms
+```
 
  #### После создания индекса:
  ```
@@ -518,10 +517,10 @@ WHERE student_id = (
   WHERE u.email = 'dave.student@example.com'
 )
 ORDER BY booked_at DESC;
-```
- Planning Time: 0.538 ms
 
+ Planning Time: 0.538 ms
  Execution Time: 0.109 ms
+```
 
  #### 3) До создания индекса:
 ```
@@ -529,10 +528,10 @@ EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, rating, comment
 FROM review
 WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
-```
- Planning Time: 0.349 ms
 
+ Planning Time: 0.349 ms
  Execution Time: 0.064 ms
+```
 
  #### После создания индекса:
  ```
@@ -554,10 +553,10 @@ WHERE subject_id = (SELECT id FROM subjects WHERE name = 'Math')
   AND start_dt >= '2025-11-01T00:00:00+00'
   AND start_dt <  '2025-12-01T00:00:00+00'
 ORDER BY start_dt;
-```
- Planning Time: 0.458 ms
 
+ Planning Time: 0.458 ms
  Execution Time: 0.104 ms
+```
 
  #### После создания индекса:
  ```
@@ -569,10 +568,10 @@ WHERE subject_id = (SELECT id FROM subjects WHERE name = 'Math')
   AND start_dt <  '2025-12-01T00:00:00+00'
 ORDER BY start_dt;
 
-```
- Planning Time: 0.382 ms
 
+ Planning Time: 0.382 ms
  Execution Time: 0.092 ms
+```
 
  #### 5) До создания индекса:
 ```
@@ -582,10 +581,10 @@ FROM time_slot
 WHERE status = 'published'
   AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
 ORDER BY start_dt;
-```
- Planning Time: 0.381 ms
 
+ Planning Time: 0.381 ms
  Execution Time: 0.062 ms
+```
 
  #### После создания индекса:
  ```
@@ -596,8 +595,6 @@ WHERE status = 'published'
   AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
 ORDER BY start_dt;
 
-```
  Planning Time: 0.378 ms
-
  Execution Time: 0.051 ms
-
+```
