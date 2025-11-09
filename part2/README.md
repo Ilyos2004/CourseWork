@@ -165,6 +165,26 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- повесить триггер на таблицу
+CREATE TRIGGER trg_booking_before_start
+BEFORE INSERT OR UPDATE OF slot_id
+ON booking
+FOR EACH ROW
+EXECUTE FUNCTION check_booking_before_start();
+
+Примеры
+select * from time_slot;
+
+1)INSERT INTO booking(slot_id, student_id, status)
+VALUES (5, 2, 'booked');
+
+2)INSERT INTO booking(slot_id, student_id, status)
+VALUES ( 8, 3,'booked');
+
+-- Удалить
+DROP FUNCTION IF EXISTS check_booking_before_start();
+
 ```
 #### 2️⃣ Проверка вместимости (capacity) при вставке брони
 ```sql
@@ -204,6 +224,28 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+--повесить триггер на таблицу
+CREATE TRIGGER trg_booking_capacity
+BEFORE INSERT OR UPDATE OF slot_id, status
+ON booking
+FOR EACH ROW
+EXECUTE FUNCTION fn_check_capacity();
+
+-- Примеры
+Сколько мест уже занято в слоте 1
+SELECT COUNT(*) AS booked_cnt
+FROM booking
+WHERE slot_id = 1 AND (status IS NULL OR lower(status)='booked');
+
+
+INSERT INTO booking(slot_id, student_id, status)
+VALUES
+(1, 1, 'booked');
+
+-- Удалить
+DROP FUNCTION IF EXISTS fn_check_capacity();
+
 ```
 
 #### 3️⃣ Автоматическая отмена бронирования при отмене слота
@@ -226,7 +268,38 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+Привязать к таблице time_slot
+CREATE TRIGGER trg_slot_auto_cancel
+AFTER UPDATE OF status
+ON time_slot
+FOR EACH ROW
+EXECUTE FUNCTION fn_auto_cancel_bookings_on_slot_cancel();
+
+Пример
+-- подставь id слота, у которого есть брони
+SELECT slot_id, id AS booking_id, status
+FROM booking
+WHERE slot_id = 1    
+ORDER BY id;
+
+Отменить слот
+UPDATE time_slot
+SET status = 'cancelled'
+WHERE id = 1;
+
+Проверить, что брони тоже отменились
+SELECT slot_id, id AS booking_id, status
+FROM booking
+WHERE slot_id = 1
+ORDER BY id;
+
+-- Удалить
+DROP FUNCTION IF EXISTS fn_auto_cancel_bookings_on_slot_cancel();
+
 ```
+
+
 ## Скрипты для создания, удаления БД, заполнения базы тестовыми данными
 
 #### 🏗️ Скрипт для создания БД
@@ -344,6 +417,20 @@ AS $$
     AND ts.capacity - COALESCE(bc.cnt, 0) > 0
   ORDER BY (ts.start_dt::timestamptz);
 $$;
+
+Примеры
+-- все доступные слоты за неделю
+SELECT *
+FROM fn_get_available_slots('2025-11-20+00','2025-11-28+00');
+
+-- только по предмету Math
+SELECT *
+FROM fn_get_available_slots('2025-11-20+00','2025-11-28+00')
+WHERE subject_id = (SELECT id FROM subjects WHERE name='Math');
+
+-- Удалить
+DROP FUNCTION IF EXISTS fn_get_available_slots(timestamptz, timestamptz);
+
 ```
 #### 📝 Добавить отзыв и пересчитать рейтинг репетитора
 ```sql
@@ -413,6 +500,14 @@ BEGIN
   RETURN v_new_id;
 END;
 $$;
+
+Примеры
+1)SELECT fn_add_review(3, 5, 'Отличное занятие!');
+2)SELECT fn_add_review(4, 4, 'Хорошое занятие!');
+
+-- Удалить
+DROP FUNCTION IF EXISTS fn_add_review(integer, integer, text);
+
 
 ```
 
