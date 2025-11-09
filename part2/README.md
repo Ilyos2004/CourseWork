@@ -695,9 +695,11 @@ CREATE INDEX IF NOT EXISTS idx_time_slot_status_start
 
 ## Примеры использование индексов 
 
-#### 1) До создания индекса:
-```
- EXPLAIN ANALYZE
+#### 1️⃣ Индекс создан для ускорения выборок ближайших слотов конкретного репетитора по колонкам tutor_id и start_dt. 
+ ```
+До создания индекса:
+
+EXPLAIN ANALYZE
 SELECT id, start_dt
 FROM time_slot
 WHERE tutor_id = (
@@ -710,28 +712,28 @@ AND start_dt >= now()
 ORDER BY start_dt;
 
  Planning Time: 0.884 ms
- Execution Time: 0.152 ms
+ Execution Time: 0.186 ms
 ```
  #### После создания индекса:
  ```
- EXPLAIN ANALYZE
-SELECT id, start_dt
-FROM time_slot
-WHERE tutor_id = (
-  SELECT tp.id
-  FROM tutor_profiles tp
-  JOIN users u ON u.id = tp.user_id
-  WHERE u.email = 'alice.tutor@example.com'
-)
-AND start_dt >= now()
-ORDER BY start_dt;
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT ts.id, ts.start_dt
+FROM time_slot ts
+JOIN tutor_profiles tp ON tp.id = ts.tutor_id
+JOIN users u ON u.id = tp.user_id
+WHERE u.email = 'alice.tutor@example.com'
+  AND ts.start_dt >= now()
+ORDER BY ts.start_dt
+LIMIT 20;
 
  Planning Time: 0.538 ms
  Execution Time: 0.128 ms
 ```
 
-#### 2) До создания индекса:
+#### 2️⃣ Индекс для быстрого поиска и просмотра истории бронирований конкретного студента.
 ```
+До создания индекса:
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, slot_id, status, booked_at
 FROM booking
@@ -764,12 +766,14 @@ ORDER BY booked_at DESC;
  Execution Time: 0.109 ms
 ```
 
- #### 3) До создания индекса:
+ #### 3️⃣ Индекс ускоряет проверки и выборку отзывов, связанных с конкретной бронью. 
 ```
+ До создания индекса:
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, rating, comment
 FROM review
-WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
+WHERE booking_id = 1;
 
  Planning Time: 0.349 ms
  Execution Time: 0.064 ms
@@ -786,8 +790,10 @@ WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
 
  Execution Time: 0.047 ms
 
- #### 4) До создания индекса:
-```
+ #### 4️⃣ Индекс для ускорения поиска слотов по предмету в заданном интервале дат
+ ```
+ До создания индекса:
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, tutor_id, start_dt
 FROM time_slot
@@ -815,13 +821,15 @@ ORDER BY start_dt;
  Execution Time: 0.092 ms
 ```
 
- #### 5) До создания индекса:
+ #### 5️⃣ Индекс для ускорения выборок слотов по статусу (published/cancelled/draft)
 ```
+ До создания индекса:
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, tutor_id, subject_id, start_dt
 FROM time_slot
 WHERE status = 'published'
-  AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+  AND start_dt >= now()            
 ORDER BY start_dt;
 
  Planning Time: 0.381 ms
@@ -834,7 +842,7 @@ EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, tutor_id, subject_id, start_dt
 FROM time_slot
 WHERE status = 'published'
-  AND start_dt >= to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+  AND start_dt >= now()            
 ORDER BY start_dt;
 
  Planning Time: 0.378 ms
