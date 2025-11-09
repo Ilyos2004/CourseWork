@@ -822,9 +822,8 @@ ORDER BY start_dt;
 ```
 
  #### 5️⃣ Индекс для ускорения выборок слотов по статусу (published/cancelled/draft)
-```
  До создания индекса:
-
+```
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, tutor_id, subject_id, start_dt
 FROM time_slot
