@@ -696,9 +696,8 @@ CREATE INDEX IF NOT EXISTS idx_time_slot_status_start
 ## Примеры использование индексов 
 
 #### 1️⃣ Индекс создан для ускорения выборок ближайших слотов конкретного репетитора по колонкам tutor_id и start_dt. 
+ До создания индекса:
  ```
-До создания индекса:
-
 EXPLAIN ANALYZE
 SELECT id, start_dt
 FROM time_slot
@@ -731,9 +730,8 @@ LIMIT 20;
 ```
 
 #### 2️⃣ Индекс для быстрого поиска и просмотра истории бронирований конкретного студента.
+ До создания индекса:
 ```
-До создания индекса:
-
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, slot_id, status, booked_at
 FROM booking
@@ -767,9 +765,8 @@ ORDER BY booked_at DESC;
 ```
 
  #### 3️⃣ Индекс ускоряет проверки и выборку отзывов, связанных с конкретной бронью. 
-```
  До создания индекса:
-
+```
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, rating, comment
 FROM review
@@ -791,9 +788,8 @@ WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
  Execution Time: 0.047 ms
 
  #### 4️⃣ Индекс для ускорения поиска слотов по предмету в заданном интервале дат
- ```
  До создания индекса:
-
+ ```
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, tutor_id, start_dt
 FROM time_slot
