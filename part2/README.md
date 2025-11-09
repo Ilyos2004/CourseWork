@@ -715,7 +715,7 @@ ORDER BY start_dt;
 ```
  #### После создания индекса:
  ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT ts.id, ts.start_dt
 FROM time_slot ts
 JOIN tutor_profiles tp ON tp.id = ts.tutor_id
@@ -732,7 +732,7 @@ LIMIT 20;
 #### 2️⃣ Индекс для быстрого поиска и просмотра истории бронирований конкретного студента.
  До создания индекса:
 ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, slot_id, status, booked_at
 FROM booking
 WHERE student_id = (
@@ -749,7 +749,7 @@ ORDER BY booked_at DESC;
 
  #### После создания индекса:
  ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, slot_id, status, booked_at
 FROM booking
 WHERE student_id = (
@@ -767,7 +767,7 @@ ORDER BY booked_at DESC;
  #### 3️⃣ Индекс ускоряет проверки и выборку отзывов, связанных с конкретной бронью. 
  До создания индекса:
 ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, rating, comment
 FROM review
 WHERE booking_id = 1;
@@ -778,7 +778,7 @@ WHERE booking_id = 1;
 
  #### После создания индекса:
  ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, rating, comment
 FROM review
 WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
@@ -790,7 +790,7 @@ WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
  #### 4️⃣ Индекс для ускорения поиска слотов по предмету в заданном интервале дат
  До создания индекса:
  ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, tutor_id, start_dt
 FROM time_slot
 WHERE subject_id = (SELECT id FROM subjects WHERE name = 'Math')
@@ -804,7 +804,7 @@ ORDER BY start_dt;
 
  #### После создания индекса:
  ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, tutor_id, start_dt
 FROM time_slot
 WHERE subject_id = (SELECT id FROM subjects WHERE name = 'Math')
@@ -820,7 +820,7 @@ ORDER BY start_dt;
  #### 5️⃣ Индекс для ускорения выборок слотов по статусу (published/cancelled/draft)
  До создания индекса:
 ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, tutor_id, subject_id, start_dt
 FROM time_slot
 WHERE status = 'published'
@@ -833,7 +833,7 @@ ORDER BY start_dt;
 
  #### После создания индекса:
  ```
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN ANALYZE
 SELECT id, tutor_id, subject_id, start_dt
 FROM time_slot
 WHERE status = 'published'
