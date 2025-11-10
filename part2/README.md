@@ -716,7 +716,7 @@ JOIN users u ON u.id = tp.user_id
 WHERE u.email = 'alice.tutor@example.com'
   AND ts.start_dt >= now()
 ORDER BY ts.start_dt
-LIMIT 20;
+LIMIT 10;
 
  Planning Time: 0.538 ms
  Execution Time: 0.128 ms
@@ -732,7 +732,7 @@ WHERE student_id = (
   SELECT sp.id
   FROM student_profiles sp
   JOIN users u ON u.id = sp.user_id
-  WHERE u.email = 'dave.student@example.com'  -- подставь нужный e-mail студента
+  WHERE u.email = 'dave.student@example.com' 
 )
 ORDER BY booked_at DESC;
 
@@ -743,15 +743,13 @@ ORDER BY booked_at DESC;
  #### После создания индекса:
  ```
 EXPLAIN ANALYZE
-SELECT id, slot_id, status, booked_at
-FROM booking
-WHERE student_id = (
-  SELECT sp.id
-  FROM student_profiles sp
-  JOIN users u ON u.id = sp.user_id
-  WHERE u.email = 'dave.student@example.com'
-)
-ORDER BY booked_at DESC;
+SELECT b.id, b.slot_id, b.status, b.booked_at
+FROM booking b
+JOIN student_profiles sp ON sp.id = b.student_id
+JOIN users u ON u.id = sp.user_id
+WHERE u.email = 'dave.student@example.com'
+ORDER BY b.booked_at DESC
+LIMIT 20;
 
  Planning Time: 0.538 ms
  Execution Time: 0.109 ms
@@ -774,7 +772,7 @@ WHERE booking_id = 1;
 EXPLAIN ANALYZE
 SELECT id, rating, comment
 FROM review
-WHERE booking_id = (SELECT id FROM booking ORDER BY id LIMIT 1);
+WHERE booking_id = 1
 ```
  Planning Time: 0.328 ms
 
@@ -810,7 +808,7 @@ ORDER BY start_dt;
  Execution Time: 0.092 ms
 ```
 
- #### 5️⃣ Индекс для ускорения выборок слотов по статусу (published/cancelled/draft)
+ #### 5️⃣ Индекс для ускорения выборок слотов по статусу (published/cancelled)
  До создания индекса:
 ```
 EXPLAIN ANALYZE
